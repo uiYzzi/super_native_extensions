@@ -24,6 +24,7 @@ class MobileContextMenuWidget extends StatefulWidget {
     required this.child,
     required this.hitTestBehavior,
     required this.menuProvider,
+    required this.triggerMode,
     this.iconTheme,
     this.destructiveIconTheme,
     required this.contextMenuIsAllowed,
@@ -38,6 +39,7 @@ class MobileContextMenuWidget extends StatefulWidget {
 
   final HitTestBehavior hitTestBehavior;
   final MenuProvider menuProvider;
+  final ContextMenuTriggerMode triggerMode;
   final ContextMenuIsAllowed contextMenuIsAllowed;
   final Widget child;
   final MobileMenuWidgetBuilder menuWidgetBuilder;
@@ -273,6 +275,7 @@ class _ContextMenuWidgetState extends State<MobileContextMenuWidget> {
           child: _LongPressDetector(
             hitTestBehavior: widget.hitTestBehavior,
             contextMenuIsAllowed: widget.contextMenuIsAllowed,
+            triggerMode: widget.triggerMode,
             child: widget.child,
           ),
         ),
@@ -285,11 +288,13 @@ class _LongPressDetector extends StatelessWidget {
   final Widget child;
   final HitTestBehavior hitTestBehavior;
   final ContextMenuIsAllowed contextMenuIsAllowed;
+  final ContextMenuTriggerMode triggerMode;
 
   const _LongPressDetector({
     required this.hitTestBehavior,
     required this.contextMenuIsAllowed,
     required this.child,
+    required this.triggerMode,
   });
 
   @override
@@ -313,27 +318,50 @@ class _LongPressDetector extends StatelessWidget {
         },
         child: child,
       );
+    } else if (triggerMode == ContextMenuTriggerMode.leftClickOrTap) {
+      // For tap trigger mode, use GestureDetector
+      return raw.MultiTouchDetector(
+        child: GestureDetector(
+          behavior: hitTestBehavior,
+          onTapDown: (details) {
+            if (contextMenuIsAllowed(details.globalPosition)) {
+              // Delay slightly to ensure UI responsiveness
+              Future.microtask(() {
+                longPressHandler?.dragGestureForPosition(
+                  context: context,
+                  position: details.globalPosition,
+                  pointer: 1, // Use fixed pointer ID
+                );
+              });
+            }
+          },
+          child: child,
+        ),
+      );
     } else {
+      // Default long press trigger mode
       return raw.MultiTouchDetector(
         child: RawGestureDetector(
           behavior: hitTestBehavior,
           gestures: {
             raw.SingleDragDelayedGestureRecognizer:
                 GestureRecognizerFactoryWithHandlers<
-                        raw.SingleDragDelayedGestureRecognizer>(
-                    () => raw.SingleDragDelayedGestureRecognizer(
-                          beginDuration: const Duration(milliseconds: 150),
-                          duration: const Duration(milliseconds: 300),
-                        ), (recognizer) {
-              recognizer.shouldAcceptTouchAtPosition = contextMenuIsAllowed;
-              recognizer.onDragStart = (globalPosition) {
-                return longPressHandler?.dragGestureForPosition(
-                  context: context,
-                  position: globalPosition,
-                  pointer: recognizer.lastPointer!,
-                );
-              };
-            }),
+                    raw.SingleDragDelayedGestureRecognizer>(
+              () => raw.SingleDragDelayedGestureRecognizer(
+                beginDuration: const Duration(milliseconds: 150),
+                duration: const Duration(milliseconds: 300),
+              ),
+              (recognizer) {
+                recognizer.shouldAcceptTouchAtPosition = contextMenuIsAllowed;
+                recognizer.onDragStart = (globalPosition) {
+                  return longPressHandler?.dragGestureForPosition(
+                    context: context,
+                    position: globalPosition,
+                    pointer: recognizer.lastPointer!,
+                  );
+                };
+              },
+            ),
           },
           child: child,
         ),

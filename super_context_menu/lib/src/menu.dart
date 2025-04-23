@@ -49,6 +49,16 @@ class DeferredMenuPreview {
 
 typedef ContextMenuIsAllowed = bool Function(Offset location);
 
+/// Defines how the context menu should be triggered.
+enum ContextMenuTriggerMode {
+  /// Trigger on right-click (desktop) or long-press (mobile).
+  /// This is the default behavior.
+  rightClickOrLongPress,
+
+  /// Trigger on left-click (desktop) or tap (mobile).
+  leftClickOrTap,
+}
+
 class ContextMenuWidget extends StatelessWidget {
   ContextMenuWidget({
     super.key,
@@ -58,6 +68,8 @@ class ContextMenuWidget extends StatelessWidget {
     required this.child,
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     required this.menuProvider,
+    this.triggerMode = ContextMenuTriggerMode
+        .rightClickOrLongPress, // Add triggerMode parameter
     this.iconTheme,
     this.contextMenuIsAllowed = _defaultContextMenuIsAllowed,
     this.tapRegionGroupIds = const <Object>{},
@@ -78,6 +90,7 @@ class ContextMenuWidget extends StatelessWidget {
 
   final HitTestBehavior hitTestBehavior;
   final MenuProvider menuProvider;
+  final ContextMenuTriggerMode triggerMode;
   final ContextMenuIsAllowed contextMenuIsAllowed;
   final Widget child;
   final MobileMenuWidgetBuilder mobileMenuWidgetBuilder;
@@ -104,6 +117,7 @@ class ContextMenuWidget extends StatelessWidget {
           return MobileContextMenuWidget(
             hitTestBehavior: hitTestBehavior,
             menuProvider: menuProvider,
+            triggerMode: triggerMode,
             liftBuilder: liftBuilder,
             previewBuilder: previewBuilder,
             deferredPreviewBuilder: deferredPreviewBuilder,
@@ -116,6 +130,7 @@ class ContextMenuWidget extends StatelessWidget {
           return DesktopContextMenuWidget(
             hitTestBehavior: hitTestBehavior,
             menuProvider: menuProvider,
+            triggerMode: triggerMode,
             contextMenuIsAllowed: contextMenuIsAllowed,
             iconTheme: iconTheme,
             tapRegionGroupIds: tapRegionGroupIds,

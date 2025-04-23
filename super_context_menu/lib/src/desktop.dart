@@ -21,6 +21,7 @@ class _ContextMenuDetector extends StatefulWidget {
     required this.hitTestBehavior,
     required this.contextMenuIsAllowed,
     required this.onShowContextMenu,
+    required this.triggerMode,
     required this.child,
   });
 
@@ -29,6 +30,7 @@ class _ContextMenuDetector extends StatefulWidget {
   final ContextMenuIsAllowed contextMenuIsAllowed;
   final Future<void> Function(Offset, Listenable, Function(bool))
       onShowContextMenu;
+  final ContextMenuTriggerMode triggerMode;
 
   @override
   State<StatefulWidget> createState() => _ContextMenuDetectorState();
@@ -56,9 +58,16 @@ class _ContextMenuDetectorState extends State<_ContextMenuDetector> {
     if (event.kind != PointerDeviceKind.mouse) {
       return false;
     }
-    if (event.buttons == kSecondaryButton ||
-        event.buttons == kPrimaryButton && _acceptPrimaryButton()) {
-      return widget.contextMenuIsAllowed(event.position);
+    if (widget.triggerMode == ContextMenuTriggerMode.leftClickOrTap) {
+      // Accept primary button clicks when trigger mode is leftClickOrTap
+      return event.buttons == kPrimaryButton &&
+          widget.contextMenuIsAllowed(event.position);
+    } else {
+      // Default behavior: right click or ctrl+left click on macOS
+      if (event.buttons == kSecondaryButton ||
+          (event.buttons == kPrimaryButton && _acceptPrimaryButton())) {
+        return widget.contextMenuIsAllowed(event.position);
+      }
     }
 
     return false;
@@ -144,6 +153,7 @@ class DesktopContextMenuWidget extends StatelessWidget {
     required this.contextMenuIsAllowed,
     required this.menuWidgetBuilder,
     required this.tapRegionGroupIds,
+    required this.triggerMode,
     this.writingToolsConfigurationProvider,
     this.iconTheme,
   });
@@ -153,6 +163,7 @@ class DesktopContextMenuWidget extends StatelessWidget {
   final ContextMenuIsAllowed contextMenuIsAllowed;
   final DesktopMenuWidgetBuilder menuWidgetBuilder;
   final Set<Object> tapRegionGroupIds;
+  final ContextMenuTriggerMode triggerMode;
   final Widget child;
 
   /// Base icon theme for menu icons. The size will be overridden depending
@@ -167,6 +178,7 @@ class DesktopContextMenuWidget extends StatelessWidget {
     return _ContextMenuDetector(
       hitTestBehavior: hitTestBehavior,
       contextMenuIsAllowed: contextMenuIsAllowed,
+      triggerMode: triggerMode,
       onShowContextMenu: (position, pointerUpListenable, onMenuResolved) async {
         await _onShowContextMenu(
           context,
